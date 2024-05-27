@@ -2,6 +2,29 @@ const fs = require('fs');
 
 
 
+exports.list = async (dir) => {
+
+  if(!fs.existsSync(dir))
+    return [];
+
+  let paths = [];
+
+  let direntArr = await fs.promises.readdir(dir, { withFileTypes:true });
+  for(let dirent of direntArr) {
+    if(dirent.name == '.DS_Store')
+      continue;
+    else if(dirent.isDirectory())
+      paths = paths.concat((await exports.list(dir + '/' + dirent.name)).map(path => dirent.name + '/' + path));
+    else
+      paths.push(dirent.name);
+  }
+
+  return paths;
+
+}
+
+
+
 exports.read = async (filePath) => {
   return fs.existsSync(filePath) ? (await fs.promises.readFile(filePath)).toString() : undefined;
 }
