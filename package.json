@@ -1,32 +1,23 @@
 {
-  "author": "Jai Gupta, Zero65 Technologies Pvt. Ltd.",
-  "name": "@zero65tech/indian-stock-market",
-  "version": "4.1.7",
-  "description": "Indian Stock Market Toolkit",
+  "author": "Zero65 Technologies Pvt. Ltd.",
+  "name": "@zero65tech/file",
+  "version": "4.0.0",
+  "description": "File Toolkit",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Zero65Tech/indian-stock-market"
+    "url": "https://github.com/Zero65Tech/file"
   },
   "keywords": [
-    "bse",
-    "nse",
-    "bse-timings",
-    "nse-timings",
-    "stock-bse",
-    "stock-nse",
-    "indian-stock",
-    "stock-market",
-    "market-utils",
-    "trading-utils",
+    "fs",
+    "file",
     "zero65",
     "zero65-tech"
   ],
   "main": "src/index.js",
   "scripts": {
-    "build": "node build/index.js",
     "test": "jest --coverage --testPathPattern=test/",
-    "lint": "npx eslint --fix src build test"
+    "lint": "npx eslint --fix src test"
   },
   "dependencies": {},
   "devDependencies": {
