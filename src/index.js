@@ -3,15 +3,15 @@ const fs = require('fs');
 
 
 exports.read = async (filePath) => {
-  return (await fs.promises.exists(filePath)) ? (await fs.promises.readFile(filePath)).toString() : undefined;
+  return fs.existsSync(filePath) ? (await fs.promises.readFile(filePath)).toString() : undefined;
 }
 
-exports.readAsJs = (filePath) => {
-  return (await fs.promises.exists(filePath)) ? require(process.cwd() + '/' + filePath) : undefined;
+exports.readAsJs = async (filePath) => {
+  return fs.existsSync(filePath) ? require(process.cwd() + '/' + filePath) : undefined;
 }
 
 exports.readAsJson = async (filePath) => {
-  return (await fs.promises.exists(filePath)) ? JSON.parse(await fs.promises.readFile(filePath)) : undefined;
+  return fs.existsSync(filePath) ? JSON.parse(await fs.promises.readFile(filePath)) : undefined;
 }
 
 
