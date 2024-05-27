@@ -1,140 +1,181 @@
-const holidays    = require("./holidays.json");
-const specialDays = require("./special-days.json");
-const specialday  = new Date("2024-11-01").getTime() / 1000 / 60 / 60 / 24; // GMT
+const fs = require('fs');
 
 
 
-function monthlyExpiry(yy, mon, weekday) {
-
-  let year = 2000 + parseInt(yy);
-  let month = [ "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC", ].indexOf(mon);
-  let day = new Date(year, month + 1, 0).getDate(); // Last day of the month
-
-  while(new Date(year, month, day).getDay() != weekday)
-    day--;
-
-  while(true) {
-    let date = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    if(holidays[year][month + 1].indexOf(day) == -1)
-      return date;
-    day--;
+function ensureDir(filePath) {
+  let i = filePath.lastIndexOf('/');
+  if(i != -1) {
+    let dir = filePath.substring(0, i);
+    if(!fs.existsSync(dir))
+      fs.mkdirSync(dir, { recursive: true });
   }
-  
 }
 
-function weeklyExpiry(yy, m, dd) {
-  let year = '20' + yy;
-  let month = [ '1', '2', '3', '4', '5', '6', '7', '8', '9', 'O', 'N', 'D' ].indexOf(m);
-  return `${ year }-${ String(month + 1).padStart(2, "0") }-${ dd }`;
+
+
+exports.readDir = async (dir, deep = false) => {
+
+  let paths = await fs.promises.readdir(dir);
+  paths = paths.filter(p => p != '.DS_Store');
+
+  if(deep) {
+    for(let i = 0; i < paths.length; i++) {
+      let stat = await fs.promises.lstat(dir + '/' + paths[i]);
+      if(stat.isDirectory()) {
+        let morePaths = await fs.promises.readdir(dir + '/' + paths[i]);
+        morePaths = morePaths.filter(p => p != '.DS_Store');
+        morePaths = morePaths.map(p => paths[i] + '/' + p);
+        paths.splice(i,1,...morePaths);
+        i--;
+      }
+    }
+  }
+
+  return paths;
+
 }
 
-exports.info = (symbol) => {
-
-  // FUT - Monthly Expiry (only)
-
-  let match = symbol.match(/^(\S+?)(\d{2})([A-Z]{3})FUT$/);
-  if(match) {
-    let script = match[1];
-    let expiry = monthlyExpiry(match[2], match[3], script == 'FINNIFTY' ? 2 : 4);
-    return { script, exp: match[2] + match[3], expiry, type: "FUT" };
-  }
-
-  // OPT - Monthly Expiry
-
-  match = symbol.match(/^(\S+?)(\d{2})([A-Z]{3})([\d\.]+)(PE|CE)$/);
-  if(match) {
-    let script = match[1];
-    let expiry = monthlyExpiry(match[2], match[3], script == 'FINNIFTY' ? 2 : 4);
-    return { script, exp: match[2] + match[3], expiry, strike: parseFloat(match[4]), type: match[5] };
-  }
-
-  // OPT - Weekly Expiry
-
-  match = symbol.match(/^(NIFTY|BANKNIFTY|FINNIFTY)(\d{2})(\w{1})(\d{2})([\d\.]+)(PE|CE)$/);
-  if(match) {
-    let script = match[1];
-    let expiry = weeklyExpiry(match[2], match[3], match[4]);
-    return { script, exp: match[2] + match[3] + match[4], expiry, strike: parseFloat(match[5]), type: match[6] };
-  }
-
-  // MF & EQ
-
-  return { script: symbol };
-
-};
 
 
-
-function istDayAndHr(date) {
-  let hrs = date.getTime() / 1000 / 60 / 60 + 5.5;
-  return [ Math.floor(hrs / 24), hrs % 24 ];
+exports.exists = (filePath) => {
+  return fs.existsSync(filePath);
 }
 
-exports.isOpen = () => {
 
-  let date = new Date();
-  if(exports.isHoliday(date))
-    return false;
 
-  let [day, hrs] = istDayAndHr(date);
-  if(day == specialday)
-    return hrs >= 18 && hrs < 19.25;
+exports.read = async (filePath) => {
+  return fs.existsSync(filePath) ? (await fs.promises.readFile(filePath)).toString() : undefined;
+}
+
+exports.readFile = async (filePath) => { // = exports.read;
+  if(fs.existsSync(filePath))
+    return JSON.parse(await fs.promises.readFile(filePath));
   else
-    return hrs >= 9 && hrs < 15.5;
+    return undefined;
+}
 
-};
+exports.readAsJs = (filePath) => {
+  return fs.existsSync(filePath) ? require(process.cwd() + '/' + filePath) : undefined;
+}
 
-exports.hasOpened = () => {
+exports.readAsJson = async (filePath) => {
+  return fs.existsSync(filePath) ? JSON.parse(await fs.promises.readFile(filePath)) : undefined;
+}
 
-  let date = new Date();
-  if(exports.isHoliday(date))
-    return false;
-
-  let [day, hrs] = istDayAndHr(date);
-  if(day == specialday)
-    return hrs >= 18;
-  else
-    return hrs >= 9;
-
-};
-
-exports.hasClosed = () => {
-
-  let date = new Date();
-  if(exports.isHoliday(date))
-    return false;
-
-  let [day, hrs] = istDayAndHr(date);
-  if(day == specialday)
-    return hrs >= 19.25;
-  else
-    return hrs >= 15.5;
-
-};
+exports.readFileAsJson = exports.readAsJson;
 
 
 
-exports.isHoliday = (date = new Date()) => {
+exports.pipe = async (data, filePath) => {
+  ensureDir(filePath);
+  await new Promise((resolve, reject) => {
+    let file = fs.createWriteStream(filePath);
+    file.on('error', reject);
+    file.on('finish', resolve);
+    data.pipe(file);
+  });
+}
 
-  if(typeof date == "object")
-    date = new Date(date.getTime() + 5.5 * 60 * 60 * 1000);
-  else if(typeof date == "string")
-    date = new Date(date); // GMT
 
-  let year  = date.getUTCFullYear();
-  let month = date.getUTCMonth() + 1;
-  let day   = date.getUTCDate();
 
-  if(specialDays[year] != undefined
-      && specialDays[year][month] != undefined
-      && specialDays[year][month].includes(day))
-    return false;
+exports.write = async (data, filePath) => {
+  ensureDir(filePath);
+  await fs.promises.writeFile(filePath, data);
+}
+
+exports.writeObject = async (data, filePath) => {
+  ensureDir(filePath);
+  await fs.promises.writeFile(filePath, JSON.stringify(data, null, 2));
+}
+
+exports.writeArray = async (data, filePath) => {
+
+  let dataStr = [];
+
+  for(let item of data) {
+    if(typeof item == 'object' && item instanceof Array)
+      dataStr.push(await exports.writeArray(item));
+    else
+      dataStr.push(JSON.stringify(item));
+  }
+
+  if(!filePath)
+    return '[ ' + dataStr.join(', ') + ' ]';
+
+  ensureDir(filePath);
+
+  await fs.promises.writeFile(filePath, '[\n  ' + dataStr.join(',\n  ') + '\n]');
+
+}
+
+exports.writeJson = async (data, filePath) => {
   
-  if(date.getUTCDay() < 1 || date.getUTCDay() > 5)
-    return true;
-  
-  return holidays[year] != undefined
-      && holidays[year][month] != undefined
-      && holidays[year][month].includes(day);
-  
-};
+  if(typeof data != 'object') {
+
+    if(typeof data == 'number' && Number.isNaN(data))
+      data = '"NaN"';
+    else
+      data = JSON.stringify(data);
+
+  } else if(data instanceof Array) {
+
+    let multiLine = false;
+    let strArr = [];
+    for(let item of data) {
+      if(typeof item == 'object' && item !== null) {
+        multiLine = true;
+        strArr.push((await exports.writeJson(item)).replace(/\n/g, '\n  '));
+      } else if(typeof item == 'number' && Number.isNaN(item)) {
+        strArr.push('"NaN');
+      } else {
+        strArr.push(JSON.stringify(item));
+      }
+    }
+
+    if(multiLine)
+      data = '[\n  ' + strArr.join(',\n  ') + '\n]';
+    else
+      data = '[ ' + strArr.join(', ') + ' ]';
+
+  } else {
+
+    let strArr = [];
+    for(let [ key, value ] of Object.entries(data)) {
+      if(typeof value == 'object' && value !== null)
+        strArr.push(`"${ key }": ${ (await exports.writeJson(value)).replace(/\n/g, '\n  ') }`);
+      else if(typeof value == 'number' && Number.isNaN(value))
+        strArr.push(`"${ key }": "NaN"`);
+      else
+        strArr.push(`"${ key }": ${ JSON.stringify(value) }`);
+    }
+
+    if(strArr.length)
+      data = '{\n  ' + strArr.join(',\n  ') + '\n}';
+    else
+      data = '{ }';
+
+  }
+
+  if(!filePath)
+    return data;
+
+  ensureDir(filePath);
+
+  await fs.promises.writeFile(filePath, data);
+
+}
+
+
+
+exports.rename = async (filePath, newFilePath) => {
+  await fs.promises.rename(filePath, newFilePath);
+}
+
+
+
+exports.delete = async (path) => {
+  if(fs.existsSync(path))
+    await fs.promises.rm(path, { recursive:true });
+}
+
+exports.deleteDir = exports.delete;
