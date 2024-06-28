@@ -43,7 +43,7 @@ exports.write = async (filePath, data) => {
   let i = filePath.lastIndexOf('/');
   if(i != -1) {
     let dir = filePath.substring(0, i);
-    if(!(await fs.promises.exists(dir)))
+    if(!(fs.existsSync(dir)))
       await fs.promises.mkdir(dir, { recursive: true });
   }
   await fs.promises.writeFile(filePath, data);
