@@ -48,3 +48,10 @@ exports.write = async (filePath, data) => {
   }
   await fs.promises.writeFile(filePath, data);
 }
+
+
+
+exports.delete = async (path) => {
+  if(fs.existsSync(path))
+    await fs.promises.rm(path, { recursive:true });
+}
