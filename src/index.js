@@ -2,6 +2,17 @@ const fs = require('fs');
 
 
 
+async function ensureDir(filePath) {
+  let i = filePath.lastIndexOf('/');
+  if(i != -1) {
+    let dir = filePath.substring(0, i);
+    if(!(fs.existsSync(dir)))
+      await fs.promises.mkdir(dir, { recursive: true });
+  }
+}
+
+
+
 exports.list = async (dir) => {
 
   if(!fs.existsSync(dir))
@@ -32,7 +43,7 @@ exports.exists = (filePath) => {
 
 
 exports.pipe = async (data, filePath) => {
-  ensureDir(filePath);
+  await ensureDir(filePath);
   await new Promise((resolve, reject) => {
     let file = fs.createWriteStream(filePath);
     file.on('error', reject);
@@ -58,12 +69,7 @@ exports.readAsJson = async (filePath) => {
 
 
 exports.write = async (filePath, data) => {
-  let i = filePath.lastIndexOf('/');
-  if(i != -1) {
-    let dir = filePath.substring(0, i);
-    if(!(fs.existsSync(dir)))
-      await fs.promises.mkdir(dir, { recursive: true });
-  }
+  await ensureDir(filePath);
   await fs.promises.writeFile(filePath, data);
 }
 
