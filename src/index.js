@@ -31,6 +31,18 @@ exports.exists = (filePath) => {
 
 
 
+exports.pipe = async (data, filePath) => {
+  ensureDir(filePath);
+  await new Promise((resolve, reject) => {
+    let file = fs.createWriteStream(filePath);
+    file.on('error', reject);
+    file.on('finish', resolve);
+    data.pipe(file);
+  });
+}
+
+
+
 exports.read = async (filePath) => {
   return fs.existsSync(filePath) ? (await fs.promises.readFile(filePath)).toString() : undefined;
 }
