@@ -25,6 +25,12 @@ exports.list = async (dir) => {
 
 
 
+exports.exists = (filePath) => {
+  return fs.existsSync(filePath);
+}
+
+
+
 exports.read = async (filePath) => {
   return fs.existsSync(filePath) ? (await fs.promises.readFile(filePath)).toString() : undefined;
 }
